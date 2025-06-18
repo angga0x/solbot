@@ -114,37 +114,48 @@ export class OnchainAnalyzer {
 
         (result.details.rugCheckIndividualRisks || []).forEach(risk => {
           const riskLevel = risk.level?.toUpperCase();
-          if (riskLevel === "HIGH" || riskLevel === "CRITICAL") highestRiskLevel = "CRITICAL";
-          else if (riskLevel === "WARN" && highestRiskLevel !== "CRITICAL") highestRiskLevel = "WARN"; // WARN is like MEDIUM
+          // Treat "DANGER" similar to "HIGH" or "CRITICAL"
+          if (riskLevel === "HIGH" || riskLevel === "CRITICAL" || riskLevel === "DANGER") {
+            highestRiskLevel = "CRITICAL"; // Elevate to CRITICAL if any of these are present
+          } else if (riskLevel === "WARN" && highestRiskLevel !== "CRITICAL") {
+            highestRiskLevel = "WARN"; 
+          }
         });
         result.details.rugCheckOverallRiskLevel = highestRiskLevel;
 
-
-        // Add reasons based on RugCheck
+        // Add reasons based on RugCheck overall risk level and specific flags
         if (result.details.rugCheckIsRugged) {
-          result.reasons.push("RugCheck: Token is marked as rugged.");
+          result.reasons.push("RugCheck: Token is marked as rugged (direct flag).");
         }
+        // Add reason if overall risk level from individual checks is high
+        if (highestRiskLevel === "CRITICAL") {
+            result.reasons.push(`RugCheck: Overall risk level determined as CRITICAL/DANGER from individual risks.`);
+        } else if (highestRiskLevel === "WARN") {
+            result.reasons.push(`RugCheck: Overall risk level determined as WARN/MEDIUM from individual risks.`);
+        }
+
         if (result.details.rugCheckIsMutableMetadata) {
           result.reasons.push("RugCheck: Metadata is mutable.");
         }
         if (result.details.rugCheckMintAuthorityEnabledRC) {
           result.reasons.push("RugCheck: Mint authority is enabled.");
         }
-        // Note: Freeze authority might be less critical for some strategies, but good to note.
         if (result.details.rugCheckFreezeAuthorityEnabledRC) {
           result.reasons.push("RugCheck: Freeze authority is enabled.");
         }
 
+        // Add reasons for specific individual risks that are high severity
         (result.details.rugCheckIndividualRisks || []).forEach(risk => {
-          // Add reasons for HIGH or CRITICAL individual risks, or specific WARNs if desired
-          if (risk.level?.toUpperCase() === "HIGH" || risk.level?.toUpperCase() === "CRITICAL") {
-            result.reasons.push(`RugCheck Risk: ${risk.name} (${risk.description || 'No description'}) - Level: ${risk.level}`);
-          } else if (risk.level?.toUpperCase() === "WARN") {
-             // Example: Only add specific warnings, e.g. "Low amount of LP Providers"
-            if (risk.name === "Low amount of LP Providers") {
-                 result.reasons.push(`RugCheck Warning: ${risk.name}.`);
-            }
-            // Add other specific warnings as needed
+          const riskLevel = risk.level?.toUpperCase();
+          if (riskLevel === "HIGH" || riskLevel === "CRITICAL" || riskLevel === "DANGER") {
+            result.reasons.push(`RugCheck Risk (${risk.level}): ${risk.name} - ${risk.description || 'No further details'}.`);
+          } else if (riskLevel === "WARN") {
+            // You might want to be more selective about which WARN level risks cause a failure.
+            // For now, let's add a generic warning reason if overall is WARN, handled above.
+            // Or add specific warnings like:
+            // if (risk.name === "Low amount of LP Providers") {
+            //      result.reasons.push(`RugCheck Warning: ${risk.name}.`);
+            // }
           }
         });
         

@@ -119,7 +119,7 @@ export class RiskManager {
     const currentSolValueIfSoldLamports = Number(quoteResponse.outAmount);
     const currentPriceSolPerToken = (currentSolValueIfSoldLamports / 1e9) / (position.amountTokenLamports / (10**position.tokenDecimals));
     
-    logger.info(`RiskManager: ${tokenMintAddress} | Entry: ${position.entryPriceSol.toFixed(6)} | Current: ${currentPriceSolPerToken.toFixed(6)} | Value: ${(currentSolValueIfSoldLamports / 1e9).toFixed(4)} SOL`);
+    logger.info(`RiskManager: ${tokenMintAddress} | Entry: ${position.entryPriceSol.toFixed(10)} | Current: ${currentPriceSolPerToken.toFixed(10)} | Value: ${(currentSolValueIfSoldLamports / 1e9).toFixed(4)} SOL`);
 
     const initialSolInvestedLamports = position.initialSolInvested * 1e9;
     const currentProfitPercentage = ((currentSolValueIfSoldLamports / 1e9) - position.initialSolInvested) / position.initialSolInvested;
@@ -144,10 +144,11 @@ export class RiskManager {
 
     if (txid) {
       logger.info(`RiskManager: ${reason} sell successful for ${position.tokenMintAddress}. TXID: ${txid}`);
+      await this.removePosition(position.tokenMintAddress); // Ensure Redis is updated
     } else {
       logger.error(`RiskManager: ${reason} sell FAILED for ${position.tokenMintAddress}.`);
+      logger.info(`RiskManager: Monitoring will continue for ${position.tokenMintAddress} after failed ${reason} sell.`);
     }
-    await this.removePosition(position.tokenMintAddress); // Ensure Redis is updated
   }
 
   public async removePosition(tokenMintAddress: string): Promise<void> {

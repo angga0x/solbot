@@ -134,14 +134,17 @@ export class JupiterTrader {
         return appConfig.defaultPriorityFeeMicroLamports;
       }
       const sortedFees = fees.map(f => f.prioritizationFee).sort((a, b) => a - b);
+      logger.debug(`JupiterTrader: Sorted recent fees (${sortedFees.length} samples): ${JSON.stringify(sortedFees)}`);
+      
       const percentileIndex = Math.floor(sortedFees.length * appConfig.dynamicPriorityFeePercentile);
       const dynamicFee = sortedFees[Math.min(percentileIndex, sortedFees.length - 1)];
+      logger.debug(`JupiterTrader: Percentile index: ${percentileIndex}, Calculated dynamic fee: ${dynamicFee}`);
 
       if (dynamicFee > 0) {
-        logger.info(`JupiterTrader: Dynamic priority fee calculated: ${dynamicFee} microLamports (based on ${appConfig.dynamicPriorityFeePercentile * 100}th percentile of ${sortedFees.length} samples)`);
+        logger.info(`JupiterTrader: Dynamic priority fee calculated: ${dynamicFee} microLamports (using ${appConfig.dynamicPriorityFeePercentile * 100}th percentile of ${sortedFees.length} fee samples)`);
         return dynamicFee;
       } else {
-        logger.warn("JupiterTrader: Calculated dynamic priority fee is 0 or invalid, using default.");
+        logger.warn(`JupiterTrader: Calculated dynamic priority fee is 0 or invalid (fees might all be 0). Raw fees: ${JSON.stringify(fees)}. Using default priority fee.`);
         return appConfig.defaultPriorityFeeMicroLamports;
       }
     } catch (error) {
